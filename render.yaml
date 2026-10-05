@@ -1,0 +1,20 @@
+services:
+  - type: web
+    name: cove-sticker-mcp-mobile
+    runtime: python
+    plan: free
+    buildCommand: pip install .
+    startCommand: >-
+      cove-sticker-mcp serve-http
+      --host 0.0.0.0
+      --port "$PORT"
+      --allowed-host "$RENDER_EXTERNAL_HOSTNAME"
+      --public-url "https://$RENDER_EXTERNAL_HOSTNAME"
+    healthCheckPath: /
+    envVars:
+      - key: PYTHON_VERSION
+        value: 3.12.8
+      - key: STICKER_MCP_ACCESS_KEY
+        generateValue: true
+      - key: STICKER_MCP_DATA_DIR
+        value: /opt/render/project/src/.sticker-data

@@ -1,0 +1,29 @@
+.venv/
+.pytest_cache/
+.ruff_cache/
+.mypy_cache/
+__pycache__/
+*.py[cod]
+dist/
+build/
+*.egg-info/
+.env
+data/
+coverage.xml
+htmlcov/
+
+
+# Local credentials and user media must never enter source control.
+.env.*
+vision-secrets.json
+*.sqlite3
+*.sqlite3-*
+*.db
+assets/
+.verification-venv/
+
+# Backups and transient files can contain private image metadata.
+instance.lock
+*.zip
+*.manifest.json
+.*.tmp
