@@ -1,16 +1,20 @@
-# ChatGPT 表情包内联显示补丁
+# ChatGPT 表情包内联显示补丁 v2
 
-本补丁只处理 ChatGPT 内联展示表情包，不改图库、识图、频率策略或管理后台逻辑。
+本补丁继续只处理 ChatGPT 自动调用与内联展示，不改图库、识图、频率策略或管理后台逻辑。
 
 ## 修改内容
 
-- `express` 继续返回标准 MCP `ImageContent`。
-- 为 `express` 增加 `_meta.ui.resourceUri` 与 `openai/outputTemplate`。
-- 新增 `ui://sticker-mcp/sticker-preview-v1.html` MCP App 资源。
-- `express` 选中表情包时，把预览图副本放入 Tool Result `_meta.sticker_preview`，避免把大段 base64 放进模型可见文本。
-- ChatGPT 内联组件从 `window.openai.toolResponseMetadata` 读取隐藏预览数据并显示图片。
-- SDK 包版本从 `0.1.0.dev1` 调整为 `0.1.0.dev2`。
+- 将 `express` 的说明改为更明确的主动调用策略：日常聊天出现吐槽、摆烂、撒娇、庆祝、调侃等明显情绪时，可主动调用，无需等用户明确说“发表情包”。
+- UI 资源 URI 升级为 `ui://sticker-mcp/sticker-preview-v2.html`，避免 ChatGPT 继续使用旧组件缓存。
+- 组件优先监听 MCP Apps 标准 `ui/notifications/tool-result`，直接读取 Tool Result `_meta.sticker_preview`。
+- 保留 `window.openai.toolOutput`、`window.openai.toolResponseMetadata` 与 `openai:set_globals` 兼容回退。
+- `express` 仍同时返回标准 MCP `ImageContent`，不改变原有无 UI 客户端的行为。
+- 版本号升级为 `0.1.0.dev3`。
+
+## 依据
+
+OpenAI 当前文档建议新 UI 使用 `_meta.ui.resourceUri` 绑定资源，并通过 MCP Apps 的 `ui/notifications/tool-result` 接收工具结果；组件内容更新时应更换资源 URI 作为缓存键。
 
 ## 验证
 
-已通过 Python `compileall` 语法检查。当前运行环境无法联网安装项目依赖，因此未在本地执行完整 pytest；部署后应以 ChatGPT 手机端实际调用 `express` 为最终验证。
+已执行 Python `compileall`。当前环境无法联网安装 `mcp==2.0.0`，因此完整 pytest 仍需在 Render / Codespaces 依赖齐全环境运行。
