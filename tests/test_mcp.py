@@ -30,11 +30,21 @@ async def test_server_exposes_two_tools_and_a_protected_asset_resource(tmp_path:
 
     tools = await server.list_tools()
     assert {tool.name for tool in tools} == {"express", "sticker_library"}
+    express_tool = next(tool for tool in tools if tool.name == "express")
+    assert express_tool.meta["ui"]["resourceUri"] == "ui://sticker-mcp/sticker-preview-v1.html"
+
     result = await server.call_tool("express", {"intent": "放松", "turns_since": 3, "include_image": True})
     assert result.is_error is False
     assert any(item.type == "image" for item in result.content)
+    assert result.meta["sticker_preview"]["data"]
+
     resources = await server.list_resource_templates()
     assert any("sticker://" in str(resource.uri_template) for resource in resources)
+    static_resources = await server.list_resources()
+    assert any(str(resource.uri) == "ui://sticker-mcp/sticker-preview-v1.html" for resource in static_resources)
+    widget = await server.read_resource("ui://sticker-mcp/sticker-preview-v1.html")
+    assert "toolResponseMetadata" in widget[0].content
+
     contents = await server.read_resource(f"sticker://{sticker.id}")
     assert contents[0].content
 
