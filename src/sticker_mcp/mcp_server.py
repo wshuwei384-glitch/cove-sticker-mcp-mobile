@@ -7,6 +7,7 @@ import secrets
 from contextlib import asynccontextmanager
 from typing import Any
 
+from mcp.server.apps import Apps
 from mcp.server.mcpserver import MCPServer
 from mcp.server.transport_security import TransportSecuritySettings
 from mcp.types import CallToolResult, ImageContent, TextContent, ToolAnnotations
@@ -136,34 +137,23 @@ def _image_content(library: StickerLibrary, sticker_id: str) -> tuple[ImageConte
 
 
 def create_server(library: StickerLibrary, *, management_url: str = "http://127.0.0.1:8765/") -> MCPServer:
-    server = MCPServer("sticker-mcp")
-
-    @server.resource(
+    apps = Apps()
+    apps.add_html_resource(
         STICKER_WIDGET_URI,
+        STICKER_WIDGET_HTML,
         name="sticker_preview_widget",
         title="Sticker preview",
         description="Inline preview UI for a selected custom sticker.",
-        mime_type="text/html;profile=mcp-app",
-        meta={
-            "ui": {"prefersBorder": False},
-            "openai/widgetDescription": "显示本次选中的表情包。",
-            "openai/widgetPrefersBorder": False,
-        },
+        prefers_border=False,
     )
-    async def sticker_preview_widget() -> str:
-        return STICKER_WIDGET_HTML
 
-    @server.resource("sticker://{sticker_id}", name="sticker_asset", description="A selected local sticker image; access is subject to the library policy.", mime_type="application/octet-stream")
-    async def sticker_asset(sticker_id: str) -> bytes:
-        library.agent_get(sticker_id)
-        return library.asset_bytes(sticker_id, include_deleted=False)
-
-    @server.tool(
+    @apps.tool(
+        resource_uri=STICKER_WIDGET_URI,
+        visibility=["model", "app"],
         name="express",
         description=EXPRESS_DESCRIPTION,
         annotations=ToolAnnotations(readOnlyHint=False, destructiveHint=False),
         meta={
-            "ui": {"resourceUri": STICKER_WIDGET_URI, "visibility": ["model", "app"]},
             "openai/outputTemplate": STICKER_WIDGET_URI,
             "openai/toolInvocation/invoking": "正在挑表情包…",
             "openai/toolInvocation/invoked": "表情包已选好",
@@ -210,6 +200,13 @@ def create_server(library: StickerLibrary, *, management_url: str = "http://127.
             }
         }
         return _result(payload, image, meta=widget_meta)
+
+    server = MCPServer("sticker-mcp", extensions=[apps])
+
+    @server.resource("sticker://{sticker_id}", name="sticker_asset", description="A selected local sticker image; access is subject to the library policy.", mime_type="application/octet-stream")
+    async def sticker_asset(sticker_id: str) -> bytes:
+        library.agent_get(sticker_id)
+        return library.asset_bytes(sticker_id, include_deleted=False)
 
     @server.tool(name="sticker_library", description=LIBRARY_DESCRIPTION, annotations=ToolAnnotations(readOnlyHint=False, destructiveHint=False), structured_output=False)
     async def sticker_library(
