@@ -1,6 +1,7 @@
 from __future__ import annotations
-
 import base64
+import hashlib
+import hmac
 import json
 import os
 import secrets
@@ -22,6 +23,8 @@ from .vision import HttpVisionProvider, TagQueue, VisionConfig, VisionError
 
 MAX_UPLOAD_BODY = 100 * 1024 * 1024
 MAX_FORM_PART = 50 * 1024 * 1024
+AUTH_COOKIE_NAME = "sticker_auth"
+AUTH_COOKIE_MAX_AGE = 365 * 24 * 60 * 60
 
 
 class RequestTooLarge(Exception):
@@ -109,7 +112,33 @@ class WebController:
         if not self.bearer_token:
             return True
         value = request.headers.get("authorization", "")
-        return secrets.compare_digest(value, f"Bearer {self.bearer_token}")
+        if secrets.compare_digest(value, f"Bearer {self.bearer_token}"):
+            return True
+        cookie = request.cookies.get(AUTH_COOKIE_NAME, "")
+        expected = hmac.new(
+            self.bearer_token.encode("utf-8"),
+            b"sticker-mcp-browser-auth-v1",
+            hashlib.sha256,
+        ).hexdigest()
+        return bool(cookie) and secrets.compare_digest(cookie, expected)
+
+    def _remember_browser(self, request: Request, response: Response) -> None:
+        if not self.bearer_token:
+            return
+        value = hmac.new(
+            self.bearer_token.encode("utf-8"),
+            b"sticker-mcp-browser-auth-v1",
+            hashlib.sha256,
+        ).hexdigest()
+        response.set_cookie(
+            AUTH_COOKIE_NAME,
+            value,
+            max_age=AUTH_COOKIE_MAX_AGE,
+            httponly=True,
+            secure=request.url.scheme == "https",
+            samesite="strict",
+            path="/",
+        )
 
     def _same_origin(self, request: Request) -> bool:
         source = request.headers.get("origin") or request.headers.get("referer")
@@ -143,6 +172,7 @@ class WebController:
         self.csrf_tokens.add(token)
         response = JSONResponse({"token": token})
         response.set_cookie("sticker_csrf", token, httponly=True, samesite="strict", secure=request.url.scheme == "https")
+        self._remember_browser(request, response)
         return response
 
     async def connection(self, request: Request) -> Response:
