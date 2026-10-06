@@ -493,9 +493,8 @@
 
   <script>
     (() => {
-      'use strict';
-
-      const $ = (id) => document.getElementById(id);
+      'use strict';      const $ = (id) => document.getElementById(id);
+      const tokenStorageKey = 'sticker-mcp.access-token.v1';
       const state = {
         token: '',
         csrf: '',
@@ -610,8 +609,10 @@
           if (state.connectorUrl) {
             $('connector-url').value = state.connectorUrl;
             $('connector-box').classList.remove('hidden');
-          }
-          state.connected = true;
+          }          state.connected = true;
+          try {            if (true) window.localStorage.setItem(tokenStorageKey, state.token);
+            else window.localStorage.removeItem(tokenStorageKey);
+          } catch (_) {}
           setConnection('已连接', 'connected');
           await Promise.all([loadGallery(), loadJobs()]);
           showToast('已连接到表情包图库', 'success');
@@ -1229,7 +1230,7 @@
         if (document.visibilityState === 'visible' && state.connected) void loadJobs();
         else { window.clearTimeout(state.jobsTimer); state.jobsTimer = null; }
       });
-      window.addEventListener('pagehide', () => { window.clearTimeout(state.jobsTimer); state.jobsTimer = null; releaseImages(); });
+      window.addEventListener('pagehide', () => { window.clearTimeout(state.jobsTimer); state.jobsTimer = null; releaseImages(); });      try { $('token').value = window.localStorage.getItem(tokenStorageKey) || ''; } catch (_) {}
       void connect();
     })();
   </script>
